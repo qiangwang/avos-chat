@@ -121,10 +121,10 @@ module.exports = Class.extend(EventEmitter)({
 	closeSession: function () {
 		return this.doCommand('session.close')
 	},
-	say: function (to, text) {
+	say: function (to, content, type) {
 		var msg = {
-			type: 'text',
-			content: {text: text},
+			type: type,
+			content: content,
 			guid: Math.random().toString('36').slice(2),
 			fromId: this._self,
 			toId: to,
@@ -223,7 +223,7 @@ function Command(name) {
 	else if (op0.slice(-1) === 'e') op1 = op0 + 'd'
 	else op1 = op0 + 'ed'
 	var response = cmd + '.' + op1
-	return { cmd: cmd, op: op0, response: response }
+	return { cmd: cmd, op: op0, response: name === 'session.remove' ? undefined : response }
 }
 
 function reconnect(e) {
