@@ -170,10 +170,6 @@ module.exports = Class.extend(EventEmitter)({
 	unwatch: function (peers) {
 		return this.doCommand('session.remove', {
 			sessionPeerIds: [].concat(peers)
-		}).then(function (unwatched) {
-			return {
-				//todo
-			}
 		})
 	},
 	getStatus: function (peers) {
