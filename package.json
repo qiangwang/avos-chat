@@ -8,6 +8,10 @@
   },
   "author": "hax <heshijun@baixing.com>",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/qiangwang/avos-chat"
+  },
   "dependencies": {
     "debug": "^0.8.1",
     "es6-promise": "^1.0.0",
