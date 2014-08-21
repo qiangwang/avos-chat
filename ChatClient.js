@@ -104,7 +104,7 @@ module.exports = Class.extend(EventEmitter)({
                     t: data.t,
                     n: data.n,
                     s: data.s,
-                    sp: this._settings.sp
+                    sp: data.sp
                 })
             }.bind(this)).
             then(function (opened) {
