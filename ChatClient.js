@@ -16,16 +16,19 @@ module.exports = Class.extend(EventEmitter)({
     constructor: function ChatClient(settings) {
         if (!settings) throw new Error('settings')
         if (!settings.appId) throw new Error('settings.appId')
+        if (!settings.peerId) throw new Error('settings.peerId')
         if (!settings.auth) throw new Error('settings.auth')
+
         this._settings = {
             appId: settings.appId,
+            peerId: settings.peerId,
+            sp: settings.sp || false,
             auth: settings.auth,
             secure: settings.secure !== undefined ? !!settings.secure : true,
             keepAlive: settings.keepAlive >= 3000 ? 0|settings.keepAlive : 240 * 1000, // 4 minutes
             server: settings.server,
         }
         this._in = new EventEmitter()
-        this._self = null
         this._peers = Object.create(null)
 
         this._in.on('presence', function (res) {
@@ -89,11 +92,10 @@ module.exports = Class.extend(EventEmitter)({
             }.bind(this))
         }
     },
-    openSession: function (self, peers) {
-        return this._settings.auth(self, peers).
+    openSession: function (peers) {
+        return this._settings.auth(this._settings.peerId, peers, this._settings.sp).
             then(function (data) {
                 protocol('auth', data)
-                this._self = self
                 data.sessionPeerIds.forEach(function (id) {
                     this._peers[id] = { presence: null }
                 }, this)
@@ -102,6 +104,7 @@ module.exports = Class.extend(EventEmitter)({
                     t: data.t,
                     n: data.n,
                     s: data.s,
+                    sp: this._settings.sp
                 })
             }.bind(this)).
             then(function (opened) {
@@ -126,7 +129,7 @@ module.exports = Class.extend(EventEmitter)({
             type: type,
             content: content,
             guid: Math.random().toString('36').slice(2),
-            fromId: this._self,
+            fromId: this._settings.peerId,
             toId: to,
             timestamp: Date.now() / 1000 | 0,
         }
@@ -139,7 +142,7 @@ module.exports = Class.extend(EventEmitter)({
         })
     },
     watch: function (peers) {
-        return this._settings.auth(this._self, peers).
+        return this._settings.auth(this._settings.peerId, peers).
             then(function (data) {
                 protocol('auth', data)
                 data.sessionPeerIds.forEach(function (id) {
@@ -181,7 +184,7 @@ module.exports = Class.extend(EventEmitter)({
         var msg = parameters ? parameters/*todo: clone*/ : {}
         protocol('do ' + name, parameters)
         if (!msg.appId) msg.appId = this._settings.appId
-        if (!msg.peerId) msg.peerId = this._self
+        if (!msg.peerId) msg.peerId = this._settings.peerId
         var cmd = Command(name)
         msg.cmd = cmd.cmd
         msg.op = cmd.op
@@ -190,6 +193,7 @@ module.exports = Class.extend(EventEmitter)({
         network('send', s)
         this._keepAlive()
         if (cmd.response) return this._wait(cmd.response)
+        else return Promise.resolve()
     },
     _wait: function (response) {
         return new Promise(function (resolve, reject) {
@@ -214,12 +218,15 @@ function Command(name) {
     if (i === -1) {
         return { cmd: name, response: name === 'ack' ? undefined : 'ack' }
     }
+
+    var mapping = {query: 'query-result', leave: 'left'}
     var cmd = name.slice(0, i), op0 = name.slice(i + 1), op1
-    if (op0 === 'query') op1 = 'query-result'
+
+    if (typeof mapping[op0] !== 'undefined') op1 = mapping[op0]
     else if (op0.slice(-1) === 'e') op1 = op0 + 'd'
     else op1 = op0 + 'ed'
-    var response = cmd + '.' + op1
-    return { cmd: cmd, op: op0, response: name === 'session.remove' ? undefined : response }
+
+    return { cmd: cmd, op: op0, response: name === 'session.remove' ? undefined : cmd + '.' + op1 }
 }
 
 function reconnect(e) {
