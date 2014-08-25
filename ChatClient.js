@@ -265,9 +265,9 @@ var getJSON = require('./util/getJSON')
 
 function lookupServer(settings) {
     protocol('lookup server', settings)
-    return getJSON('http://router.g0.push.avoscloud.com/v1/route?cb=?', {
+    return getJSON('http://router.g0.push.avoscloud.com/v1/route', {
         appId: settings.appId,
-        secure: settings.secure ? '1' : undefined,
+        secure: 1
     }).then(function (config) {
         return {
             url: config.server,
