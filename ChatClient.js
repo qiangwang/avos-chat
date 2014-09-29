@@ -57,19 +57,20 @@ module.exports = Class.extend(EventEmitter)({
         }.bind(this))
 
         this._waitCommands = []
+        this._reconnectCount = 0
     },
     serverURL: function () {
         var server = this._settings.server
         if (server && new Date() < server.expires) return server.url
         else return null
     },
-    connect: function (autoReconnect) {
+    connect: function () {
         var url = this.serverURL()
         if (!url) {
             return lookupServer(this._settings).
                 then(function (server) {
                     this._settings.server = server
-                    return this.connect(autoReconnect)
+                    return this.connect()
                 }.bind(this)).
                 catch(function () {
                     throw new Error('No server available')
@@ -86,7 +87,7 @@ module.exports = Class.extend(EventEmitter)({
                     network('closed', evt)
                     this.emit('close', evt)
                 }.bind(this)
-                if (autoReconnect) ws.onerror = reconnect.bind(this)
+                ws.onerror = reconnect.bind(this)
                 ws.onmessage = processMessage.bind(this)
                 this._ws = ws
             }.bind(this))
@@ -228,8 +229,12 @@ function Command(name) {
 }
 
 function reconnect(e) {
-    network('error', e)
-    //todo: reconnect
+    if(this._reconnectCount >= 5) throw new Error('reconnect time exceed')
+    this._reconnectCount += 1
+
+    network('reconnect for error', e)
+    this._waitCommands = []
+    this.connect()
 }
 
 function processMessage(e) {
